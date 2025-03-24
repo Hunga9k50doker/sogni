@@ -13,7 +13,6 @@ const { headers } = require("./core/header.js");
 const { showBanner } = require("./core/banner.js");
 const localStorage = require("./localStorage.json");
 const { Wallet, ethers } = require("ethers");
-const { sovleCaptcha } = require("./captcha.js");
 const { jwtDecode } = require("jwt-decode");
 
 class ClientAPI {
@@ -280,7 +279,7 @@ class ClientAPI {
   }
 
   async claimReward(payload) {
-    return this.makeRequest(`${this.baseURL}/v2/account/rewards/claim`, "post", payload);
+    return this.makeRequest(`${this.baseURL}/v2/account/reward/claim`, "post", payload);
   }
 
   async getTransactions() {
@@ -377,32 +376,43 @@ class ClientAPI {
     return userData;
   }
 
+  claimAvaliable(data) {
+    if (!data) return false;
+    const currentTime = Math.floor(Date.now() / 1000);
+    const nextClaimTime = data.lastClaimTimestamp + data.claimResetFrequencySec;
+    if (currentTime >= nextClaimTime) {
+      return true;
+    } else {
+      const timeRemaining = nextClaimTime - currentTime;
+      if (data.id == 2) {
+        const nextAvailable = (data.lastClaimTimestamp + data.claimResetFrequencySec) * 1000;
+        const timeLeft = nextAvailable - Date.now();
+        if (timeLeft > 0) {
+          const hours = Math.floor(timeLeft / (3600 * 1000));
+          const minutes = Math.floor((timeLeft % (3600 * 1000)) / (60 * 1000));
+          this.log(`[${new Date().toISOString()}] Next check in ${hours}h ${minutes}m`, "warning");
+        }
+      }
+      return false;
+    }
+  }
+
   async handleTask() {
     const newToken = await this.handleRefreshToken();
     if (!newToken) return;
     this.token = newToken;
     const result = await this.getRewards();
     if (!result.success) return;
-    const tasks = result.data.rewards.filter((t) => t.canClaim > 0 && t.claimResetFrequencySec <= 0);
-    const dailyBoost = result.data.rewards.find((r) => r.id === "2");
-    if (dailyBoost?.lastClaimTimestamp && dailyBoost.claimResetFrequencySec) {
-      const nextAvailable = (dailyBoost.lastClaimTimestamp + dailyBoost.claimResetFrequencySec) * 1000;
-      const timeLeft = nextAvailable - Date.now();
-      if (timeLeft > 0) {
-        const hours = Math.floor(timeLeft / (3600 * 1000));
-        const minutes = Math.floor((timeLeft % (3600 * 1000)) / (60 * 1000));
-        this.log(`[${new Date().toISOString()}] Next check in ${hours}h ${minutes}m`, "warning");
-      }
-    }
+    const tasks = result.data.rewards.filter((t) => t.canClaim > 0 && this.claimAvaliable(t));
+
     if (tasks.length == 0) return this.log(`No tasks available!`, "warning");
     for (const task of tasks) {
-      await sleep(1);
-
       const resClaim = await this.claimReward({
         claims: [task.id],
       });
       if (!resClaim.success) return this.log(`Can't claim task ${task.id} | ${task.title} | ${JSON.stringify(resClaim)}`, "warning");
       this.log(`Claim task ${task.id} | ${task.title} success | Reward: ${task.amount}`, "success");
+      await sleep(1);
     }
   }
 
@@ -431,7 +441,7 @@ class ClientAPI {
     if (userData.success) {
       await this.handleTask();
       await sleep(1);
-      // await this.handleSyncData();
+      await this.handleSyncData();
     } else {
       return this.log("Can't get use info...skipping", "error");
     }
@@ -561,7 +571,7 @@ async function main() {
       }
     }
     await sleep(3);
-    console.log(`Updating new data...`.blue);
+    console.log(`Updating new refresh token...`.blue);
     await updateRefreshTokenLocal();
     await sleep(3);
     console.log(`=============${new Date().toLocaleString()} | Hoàn thành tất cả tài khoản | Chờ ${settings.TIME_SLEEP} phút=============`.magenta);
