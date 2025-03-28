@@ -1,14 +1,15 @@
-# ᝰ.ᐟ CoreSky
+# ᝰ.ᐟ coreSky
 
 Tool được phát triển bởi nhóm tele Airdrop Hunter Siêu Tốc (https://t.me/airdrophuntersieutoc)
 
-## 🚨 Attention Before Running CoreSky Cli Version
+## 🚨 Attention Before Running coreSky Cli Version
 
 I am not `responsible` for the possibility of an account being `banned`!
 
-## 📎 CoreSky Node cli version Script features
+## 📎 coreSky Node cli version Script features
 
-- Auto ckeckin
+- Auto reff
+- Auto task
 - Support proxy or not
 - Mutiple threads, multiple accounts
 
@@ -41,7 +42,7 @@ nano .env
 nano proxy.txt
 ```
 
-- privatekey: how to get privatekey => join my channel: https://t.me/airdrophuntersieutoc
+- privateKeys: how to get privateKeys => join my channel: https://t.me/airdrophuntersieutoc
 
 ```bash
 nano privateKeys.txt
